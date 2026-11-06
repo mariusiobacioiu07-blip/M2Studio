@@ -681,7 +681,7 @@ async function busq(q){q=qOf(q);if(!q)return[];try{const d=await jsonp(`https://
 const busqTxt=a=>a&&a.length?`\n\nLO QUE LA GENTE ESCRIBE EN EL BUSCADOR DE YOUTUBE sobre este tema (autocompletado real). Si encaja de forma natural, usa alguna de estas palabras en el título y al inicio de la descripción:\n- ${a.join('\n- ')}`:'';
 
 /* miniaturas reales como imágenes para Gemini (si el navegador lo permite) */
-async function thumbs(a,n){const out=[];for(const v of a.slice(0,n)){try{const r=await fetch(`https://i.ytimg.com/vi/${v.i}/mqdefault.jpg`);if(!r.ok)continue;const b=await r.blob();
+async function thumbs(a,n,fresh){const out=[];for(const v of a.slice(0,n)){try{const r=await fetch(`https://i.ytimg.com/vi/${v.i}/mqdefault.jpg${fresh?'?v='+Date.now():''}`,fresh?{cache:'no-store'}:{});if(!r.ok)continue;const b=await r.blob();
  const d=await new Promise((res,rej)=>{const f=new FileReader();f.onload=()=>res(String(f.result).split(',')[1]);f.onerror=rej;f.readAsDataURL(b)});if(d)out.push({mime_type:'image/jpeg',data:d})}catch(e){}}return out}
 
 function refCard(o,R,ni){if(!R||!R.length){if(!val('k_yt'))o.append(card('ℹ️ Sin ejemplos reales','<p class="hint" style="margin:0">Pon la clave de YouTube Data en Ajustes para que los títulos y miniaturas se basen en vídeos reales que han funcionado.</p>','',''));return}
@@ -746,7 +746,7 @@ async function mcFix(k,b,quiet){const v=MCV[k];msg('');b.disabled=true;const old
   const R=[...m.values()].sort((a,c)=>(c.an-a.an)||(c.x-a.x)).slice(0,8);
   if(R.length<3)throw Error(`Solo he encontrado ${R.length} vídeos en español de otros canales sobre «${qs.join(' / ')}». No es suficiente para comparar; prueba con otro vídeo.`);
   const R4=R.slice(0,4),n=R4.length+1,cp=masPar(v.t,R);
-  st('Cargando miniaturas…');const IM=await thumbs(R4,4),own=await thumbs([v],1),okImg=IM.length===R4.length&&own.length===1;
+  st('Cargando miniaturas…');const IM=await thumbs(R4,4),own=await thumbs([v],1,true),okImg=IM.length===R4.length&&own.length===1;
   st('Comparando…');
   const list=R4.map((r,i)=>`R${i+1}. «${r.t}» — ${nf(r.v)} vistas, canal de ${nf(r.s)} subs (×${xs(r.x)})${r.an?' · animado':''}`).join('\n');
   const d=jparse(await ai(SYS(),`TAREA: competición de clics. Imagina que un espectador interesado en este tema ve estos ${n} vídeos a la vez en su pantalla de inicio del móvil. ¿En cuál pulsaría primero?
@@ -774,6 +774,8 @@ function mcShow(k){const v=MCV[k],x=mcGet(v),box=$('#mcR'+k);if(!x)return;if(box
  const who=c=>{c=String(c||'').trim().toUpperCase();if(c.startsWith('YO'))return{yo:1,t:v.t,th:v.th,c:'Tu vídeo'};const r=R[(parseInt(c.replace(/\D/g,''))||1)-1];return r?{t:r.t,th:r.th,c:r.c+' · '+nf(r.v)+' vistas'}:null};
  const rank=(arr,img)=>(arr||[]).map(who).filter(Boolean).map((w,i)=>`<div class="vc"${w.yo?' style="background:rgba(110,231,160,.12);border-radius:12px;padding:6px"':''}><b style="font-size:1.4rem;min-width:34px">${i+1}.º</b>${img?`<img loading="lazy" alt="" src="${ea(w.th)}">`:''}<div class="vi"><b>${w.yo?'👉 ':''}${esc(w.t)}</b><span class="hint">${esc(w.c)}</span></div></div>`).join('');
  box.innerHTML='';
+ const rb=document.createElement('div');rb.className='bar';rb.innerHTML=`<button class="btn s" id="mcRe${k}">🔄 Volver a comparar</button><span class="hint" style="align-self:center">Comparado ${ago(new Date(x.t).toISOString())}. Úsalo si has cambiado el título o la miniatura.</span>`;box.append(rb);
+ $('#mcRe'+k).onclick=()=>{const all=mcAllS();delete all[v.i];lsw(MCS,all);box.innerHTML='';$('#mcB'+k).innerHTML=mcBadges(v);const b=document.querySelector(`[data-mk="${k}"]`);b.textContent='🥊 Comparar';mcFix(k,b)};
  if(x.cp)box.append(card('⚠️ Tu título ya existe',`<p style="margin:0">Se parece mucho a «${esc(x.cp)}», que ya está publicado y con muchas vistas. Quien ya vio ese vídeo no va a pulsar otro igual. Necesitas otro ángulo.</p>`,''));
  const pt=+d.puesto_titulo||0,pm=d.puesto_miniatura==null?null:+d.puesto_miniatura||0;
  box.append(card(`<span class="x ${pk(pt,n)}" style="margin:0">Título: ${ord(pt)} de ${n}</span>`,`<div class="why">${esc(d.por_que_titulo||'')}</div>`+rank(d.orden_titulos,0),''));

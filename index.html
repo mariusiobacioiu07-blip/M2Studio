@@ -80,6 +80,8 @@ nav button span{font-size:.78rem}nav button.on{background:#3a3e4f;color:#fff!imp
 .qa button{flex:0 0 58%;scroll-snap-align:start;text-align:left;background:var(--sf);border:1px solid var(--ln);border-radius:22px;padding:18px;color:var(--tx);font:inherit;cursor:pointer;min-height:150px}
 .qa svg{color:var(--mu);margin-bottom:12px}.qa b{display:block;font-size:1.05rem;line-height:1.35}.qa span{display:block;color:var(--mu);font-size:.9rem;margin-top:6px}
 .composer{position:sticky;bottom:0;background:var(--sf);border:1px solid var(--ln);border-radius:26px;padding:14px 14px 10px;margin-top:10px;z-index:5;box-shadow:0 -12px 24px var(--bg)}
+
+.mins{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 #chTop{display:none;text-align:right;margin:0 0 8px}#inicio.chat #chTop{display:block;position:sticky;top:0;z-index:4}
 #attBox{display:flex;gap:8px;flex-wrap:wrap}#attBox:not(:empty){margin-bottom:8px}.att{display:flex;align-items:center;gap:6px;background:#22263a;border-radius:12px;padding:4px 6px 4px 4px;font-size:.85rem;max-width:100%}.att img{width:38px;height:38px;object-fit:cover;border-radius:8px}.att span{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.att button{background:none;border:0;color:var(--mu);font-size:1rem;cursor:pointer}
 .composer textarea{width:100%;background:none!important;border:0!important;resize:none;color:var(--tx);font:inherit;font-size:1.05rem;min-height:30px;max-height:150px;padding:4px 6px!important;margin:0;outline:none;box-shadow:none!important}
@@ -307,7 +309,7 @@ async function gen(out,ld,user,o){msg('');$(out).innerHTML='';busy(ld,1);
  try{let t=await ai(SYS(),user,o);if(o&&o.post)t=o.post(t);busy(ld,0);$(out).append(card('Resultado',`<div class="pre">${esc(t)}</div>`,t));return t}catch(e){busy(ld,0);err(e)}}
 $$('[data-gen]').forEach(b=>b.onclick=()=>{
  if(b.dataset.gen==='ideas')doIdeas();
- else{const s=rv('gf')==='short';gen('#outGuion','#ldGuion',`Escribe un guion de ${s?'Short':'vídeo largo'} sobre: ${$('#gT').value}. Duración: ${$('#gD').value||'la que marque las reglas para este formato'}.\nNotas: ${$('#gN').value}\nEstructura (sin escribir sus nombres): gancho inicial que entregue la promesa en los primeros segundos, desarrollo con un giro, dato nuevo o pregunta cada 20–30 s para sostener la retención, y cierre${s?' que enlace con el inicio (bucle)':''}. Calcula unas 150 palabras por minuto de locución. Devuelve SOLO la narración, sin frase introductoria ni comentarios finales.${REFUERZO()}${NARR}`,{post:soloNarr}).then(t=>{if(!t)return;const b=document.createElement('div');b.className='bar';b.innerHTML='<button class="btn s">🔍 Revisar este guion</button><button class="btn s">📋 Comprobar con las reglas</button>';b.firstChild.onclick=()=>{$('#rG').value=t;$(`[name=rf][value=${s?'short':'largo'}]`).checked=true;pillGo('guion','p-gr');$('#goRev').click()};b.lastChild.onclick=()=>{$('#rG').value=t;$(`[name=rf][value=${s?'short':'largo'}]`).checked=true;pillGo('guion','p-gr');$('#goChk').click()};$('#outGuion').append(b)})}});
+ else{const s=rv('gf')==='short';gen('#outGuion','#ldGuion',`Escribe un guion de ${s?'Short':'vídeo largo'} sobre: ${$('#gT').value}. Duración: ${$('#gD').value||'la que marque las reglas para este formato'}.\nNotas: ${$('#gN').value}\nEstructura (sin escribir sus nombres): gancho inicial que entregue la promesa en los primeros segundos, desarrollo con un giro, dato nuevo o pregunta cada 20–30 s para sostener la retención, y cierre${s?' que enlace con el inicio (bucle)':''}. Calcula entre 150 y 160 palabras por minuto de locución y cumple esa longitud. Devuelve SOLO la narración, sin frase introductoria ni comentarios finales.${REFUERZO()}${NARR}`,{post:soloNarr}).then(t=>{if(!t)return;const b=document.createElement('div');b.className='bar';b.innerHTML='<button class="btn s">🔍 Revisar este guion</button><button class="btn s">📋 Comprobar con las reglas</button>';b.firstChild.onclick=()=>{$('#rG').value=t;$(`[name=rf][value=${s?'short':'largo'}]`).checked=true;pillGo('guion','p-gr');$('#goRev').click()};b.lastChild.onclick=()=>{$('#rG').value=t;$(`[name=rf][value=${s?'short':'largo'}]`).checked=true;pillGo('guion','p-gr');$('#goChk').click()};$('#outGuion').append(b)})}});
 const yt=async(p,q)=>{const k=val('k_yt');if(!k)throw Error('Falta la clave de YouTube Data. Ponla en Ajustes.');const r=await fetch(`https://www.googleapis.com/youtube/v3/${p}?${q}&key=${k}`),j=await r.json();if(!r.ok)throw Error(j.error?.message||r.status);return j};
 const nf=n=>Number(n).toLocaleString('es-ES');
 function list(items){TR=items.map(v=>`${v.t} — ${v.c} (${nf(v.v)} vistas)`).join('\n');$('#outTend').innerHTML='';$('#outTend').append(card('Resultados',items.map(v=>`<div class="it"><span><b><a href="https://youtu.be/${v.i}" target="_blank" rel="noopener" style="color:inherit">${esc(v.t)}</a></b><br><span class="hint">${esc(v.c)} · ${nf(v.v)} vistas</span></span></div>`).join(''),TR))}
@@ -815,12 +817,15 @@ const chSave=()=>{CHATS.sort((a,b)=>b.t-a.t);CHATS=CHATS.slice(0,40);lsw(CHS,CHA
 const md=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/^#{1,3} (.+)$/gm,'<b>$1</b>').replace(/^[-*] (.+)$/gm,'• $1').replace(/\n/g,'<br>');
 function chCtx(){const parts=[`CONTEXTO DEL CANAL:\n${val('canal')}`];
  const mc=lsj('mcc',null);if(mc&&mc.vs&&mc.vs.length)parts.push(`ÚLTIMOS VÍDEOS DEL CANAL (datos públicos reales, del más nuevo al más antiguo):\n`+mc.vs.slice(0,15).map(v=>`- «${v.t}» · ${v.d<=180?'Short':'largo'} · ${nf(v.v)} vistas · ${ago(v.p)}`).join('\n'));
- const wk=lsj('wk1',null);if(wk&&wk.R&&wk.R.length)parts.push(`LO QUE ESTÁ FUNCIONANDO ESTA SEMANA EN EL NICHO (vídeos reales en español, muchas más vistas que suscriptores):\n`+wk.R.slice(0,10).map(r=>`- «${r.t}» — ${r.c}, ${nf(r.v)} vistas, ${nf(r.s)} subs (×${xs(r.x)}), ${ago(r.p)}`).join('\n'));
- if(REFS.length)parts.push(refTxt(REFS.slice(0,10),'VÍDEOS DEL NICHO QUE HAN FUNCIONADO (últimos años)').trim());
+ const wk=lsj('wk1',null),wR=wk&&wk.R?wk.R.filter(okRef):[];if(wR.length)parts.push(`LO QUE ESTÁ FUNCIONANDO ESTA SEMANA EN EL NICHO (vídeos reales en español, muchas más vistas que suscriptores):\n`+wR.slice(0,10).map(r=>`- «${r.t}» — ${r.c}, ${nf(r.v)} vistas, ${nf(r.s)} subs (×${xs(r.x)}), ${ago(r.p)}`).join('\n'));
+ if(REFS.filter(okRef).length)parts.push(refTxt(REFS.filter(okRef).slice(0,10),'VÍDEOS DEL NICHO QUE HAN FUNCIONADO (últimos años)').trim());
  return parts.join('\n\n')}
 function chRender(){const M=chMsgs(),L=$('#chLog');
- L.innerHTML=M.map((m,i)=>m.r==='u'?`<div class="mu">${esc(m.t)}</div>`:`<div class="ma">${md(m.t)}<div class="mab"><button class="btn sm s" data-cc="${i}">Copiar</button></div></div>`).join('');
+ L.innerHTML=M.map((m,i)=>m.r==='u'?`<div class="mu">${esc(m.t)}</div>`:m.ask?`<div class="ma">${md(m.t)}<div class="mins">${[3,5,8,10,12,15].map(n=>`<button class="btn sm s" data-mn="${n}">${n} min</button>`).join('')}</div><div class="hint" style="margin-top:6px">O escribe el número abajo y envíalo.</div></div>`:`<div class="ma">${md(m.t)}<div class="mab"><button class="btn sm s" data-cc="${i}">Copiar</button>${m.g?` <button class="btn sm s" data-rv="${i}">🔍 Revisar este guion</button><div class="hint" style="margin-top:6px">${nf(m.wn||wc(m.t))} palabras ≈ ${((m.wn||wc(m.t))/155).toFixed(1)} min${m.tm?` · pediste ${m.tm} min (${nf(m.tm*150)}–${nf(m.tm*160)} palabras)${(m.wn||0)<m.tm*150*.85?' — ⚠️ se ha quedado corto, pídele «alárgalo hasta '+m.tm+' minutos»':''}`:''}</div>`:''}${m.og?` <button class="btn sm" data-wg="${i}">✍️ Escribir el guion completo</button>`:''}</div></div>`).join('');
  L.querySelectorAll('[data-cc]').forEach(b=>b.onclick=()=>cp(M[+b.dataset.cc].t));
+ L.querySelectorAll('[data-mn]').forEach(b=>b.onclick=()=>minPick(+b.dataset.mn));
+ L.querySelectorAll('[data-wg]').forEach(b=>b.onclick=()=>chSend(`Escribe el guion completo de «${M[+b.dataset.wg].og}».`));
+ L.querySelectorAll('[data-rv]').forEach(b=>b.onclick=()=>{goTab('guion');$('#rG').value=M[+b.dataset.rv].t;const r=document.querySelector('[name=rf][value=largo]');if(r)r.checked=true;pillGo('guion','p-gr');$('#goRev').click()});
  $('#inicio').classList.toggle('chat',!!M.length);
  if(M.length)setTimeout(()=>{const s=$('#sc');s.scrollTop=s.scrollHeight},30)}
 let ATT=[];
@@ -837,21 +842,30 @@ const chGrow=()=>{const t=$('#chIn');t.style.height='auto';t.style.height=Math.m
 function copyCheck(t){const R=[...((lsj('wk1',{}).R)||[]),...REFS];if(!R.length)return'';const w=[];
  t.split('\n').forEach(l=>{const m=l.match(/^\s*(?:\d+[.)]|[-•*])\s*\**\s*(?:«|")?(.{12,90}?)(?:»|")?\**\s*$/);if(m){const p=masPar(m[1],R);if(p)w.push(`«${m[1].trim()}» se parece mucho a «${p.r.t}» (${nf(p.r.v)} vistas). Busca otro ángulo.`)}});
  return w.length?'\n\n⚠️ Aviso de la app (no de la IA): '+w.join(' '):''}
-async function chSend(txt){txt=String(txt||$('#chIn').value).trim();const att=ATT.slice();if(!txt&&!att.length)return;if(!txt)txt='Analiza lo que te adjunto.';$('#chIn').value='';chGrow();ATT=[];attRender();msg('');
+let PENDG=null;
+const minOf=t=>{const m=String(t).match(/(\d+(?:[.,]\d+)?)\s*(?:min|minutos|mins)\b/i);return m?parseFloat(m[1].replace(',','.')):0};
+function askMin(txt,att){PENDG={txt,att};goTab('inicio');if(!chCur()){CUR='c'+Date.now();CHATS.unshift({id:CUR,t:Date.now(),m:[]})}
+ const c=chCur();c.m.push({r:'u',t:txt});c.m.push({r:'a',t:'¿Cuántos minutos quieres que dure? Calculo 150–160 palabras por minuto de locución.',ask:1});c.t=Date.now();chSave();chRender()}
+async function chSend(txt,o={}){txt=String(txt||$('#chIn').value).trim();const att=ATT.slice();if(!txt&&!att.length)return;if(!txt)txt='Analiza lo que te adjunto.';$('#chIn').value='';chGrow();ATT=[];attRender();msg('');
+ const wantG=/\bgui[oó]n(es)?\b/i.test(txt)&&!/revis|mejor|analiz|corrig|qué te parece|que te parece|estructura/i.test(txt);
+ if(wantG&&!o.min&&!minOf(txt))return askMin(txt,att);
  if(!val('k_gem'))return msg('Falta la clave de Gemini. Ponla en Ajustes.');
  goTab('inicio');
  if(!chCur()){CUR='c'+Date.now();CHATS.unshift({id:CUR,t:Date.now(),m:[]})}
+ const isG=wantG,MIN=o.min||minOf(txt),W1=Math.round(MIN*150),W2=Math.round(MIN*160);
+ const GX=isG?`\n\nINSTRUCCIONES DE GUION (las mismas que la pestaña Guion): escribe el guion COMPLETO de la narración, palabra por palabra, listo para la voz (no una estructura ni un resumen). Duración: ${MIN} minutos = entre ${W1} y ${W2} palabras (150–160 palabras por minuto). Cumple esa longitud. Estructura (sin escribir sus nombres): gancho inicial que entregue la promesa del título en los primeros segundos y abra una pregunta, desarrollo con un giro, dato nuevo o pregunta cada 20–30 s para sostener la retención, y cierre breve con llamada genérica a suscribirse. Devuelve SOLO la narración, en un solo bloque de texto, sin frase introductoria, sin títulos de sección, sin marcas de tiempo, sin indicaciones visuales y sin comentarios finales. No menciones el vídeo de referencia ni sus cifras. Marca con [VERIFICAR] cualquier dato dudoso.${REFUERZO()}${NARR}`:'';
  const tx=att.filter(a=>a.k==='txt').map(a=>`\n\n--- ARCHIVO ADJUNTO: ${a.n} ---\n${a.t.slice(0,60000)}`).join(''),im=att.filter(a=>a.k==='img').map(a=>({mime_type:'image/jpeg',data:a.d.split(',')[1]}));
- const c=chCur();c.m.push({r:'u',t:txt+(att.length?`\n📎 ${att.map(a=>a.n).join(', ')}`:'')});c.t=Date.now();chRender();
+ const c=chCur();if(!o.silent)c.m.push({r:'u',t:txt+(att.length?`\n📎 ${att.map(a=>a.n).join(', ')}`:'')});c.t=Date.now();chRender();
  const w=document.createElement('div');w.className='ma';w.innerHTML='<span class="sp" style="display:inline-block;vertical-align:middle;margin-right:8px"></span>Pensando…';$('#chLog').append(w);
  const s=$('#sc');s.scrollTop=s.scrollHeight;$('#chGo').disabled=true;
- try{const t=await ai(`${COACH}\n\nGUÍA GENERAL:\n${val('rules')}\n\n${chCtx()}`,txt+tx+(im.length?`\n\n(Te adjunto ${im.length} imagen${im.length>1?'es':''}.)`:''),{hist:c.m.slice(0,-1).slice(-16),imgs:im});c.m.push({r:'a',t:t.trim()+copyCheck(t)})}
+ try{const t=await ai(`${COACH}\n\nGUÍA GENERAL:\n${val('rules')}\n\n${chCtx()}`,txt+GX+tx+(im.length?`\n\n(Te adjunto ${im.length} imagen${im.length>1?'es':''}.)`:''),{hist:c.m.slice(0,-1).slice(-16),imgs:im});if(isG){const g=soloNarr(t).trim(),n=wc(g);c.m.push({r:'a',t:g,g:1,tm:MIN,wn:n})}else c.m.push({r:'a',t:t.trim()+copyCheck(t),og:o.offerG||''})}
  catch(e){c.m.push({r:'a',t:'⚠️ No he podido responder: '+(e.message||e)})}
  c.m=c.m.slice(-40);chSave();$('#chGo').disabled=false;chRender()}
-function chNew(){CUR=null;chRender();goTab('inicio');$('#sc').scrollTo(0,0)}
+function minPick(n){if(!PENDG||!n)return;const p=PENDG;PENDG=null;const c=chCur();if(c){c.m=c.m.filter(m=>!m.ask);c.m.push({r:'u',t:n+' min'})}ATT=p.att||[];chSend(p.txt+` Duración: ${n} minutos.`,{min:n,silent:1})}
+function chNew(){PENDG=null;CUR=null;chRender();goTab('inicio');$('#sc').scrollTo(0,0)}
 function chOpen(id){CUR=id;closeDrw();goTab('inicio');chRender()}
-$('#chGo').onclick=()=>chSend();
-$('#chIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();chSend()}});
+$('#chGo').onclick=()=>{const v=$('#chIn').value.trim();if(PENDG&&/^\d+([.,]\d+)?\s*(min|minutos)?$/i.test(v)){$('#chIn').value='';return minPick(parseFloat(v.replace(',','.')))}chSend()};
+$('#chIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#chGo').click()}});
 $('#chNew2').onclick=chNew;
 
 /* tarjetas rápidas */
@@ -873,7 +887,7 @@ let WTAB='d';
 async function wkLoad(force){const o=$('#outWk');
  if(!val('k_gem')){o.innerHTML='<p class="hint" style="text-align:center">Pon la clave de Gemini en Ajustes.</p>';return}
  let wk=lsj('wk1',null);
- if(force||!wk||wk.day!==today()||!wk.ideas){
+ if(force||!wk||wk.day!==today()||!wk.ideas||wk.f!=='v2'){
   $('#ldWk').classList.add('on');o.innerHTML='';
   try{let R=[],days=7;
    if(val('k_yt')){const pull=async d=>{const rs=await Promise.allSettled(WKQ.map(q=>refsFor(q,'l',d))),m=new Map(),me=norm((lsj('mcc',{c:{t:''}}).c||{}).t||'');rs.forEach(r=>{if(r.status==='fulfilled')r.value.forEach(x=>{if(norm(x.c)!==me)m.set(x.i,x)})});return[...m.values()].sort((a,b)=>(b.an-a.an)||(b.x-a.x)).slice(0,12)};
@@ -889,7 +903,7 @@ REGLAS:
 - El campo "miniatura": texto de 0-4 palabras que NO repita palabras del título y añada algo nuevo.
 Responde SOLO con JSON válido: {"ideas":[{"titulo":"","basada_en":"R1","por_que":"","angulo":"","miniatura":"idea de miniatura en una frase"}]}`);
    const ideas=(d.ideas||[]).filter(x=>x&&x.titulo).map(x=>{const n=parseInt(String(x.basada_en||'').replace(/\D/g,''));return{...x,ref:R[n-1]||null}});
-   wk={day:today(),days,R,ideas};lsw('wk1',wk)}
+   wk={day:today(),days,R,ideas,f:'v2'};lsw('wk1',wk)}
   catch(e){$('#ldWk').classList.remove('on');return err(e)}
   $('#ldWk').classList.remove('on')}
  wkRender()}
@@ -911,7 +925,7 @@ function wkRender(){const wk=lsj('wk1',null),o=$('#outWk'),sv=lsj(WSV,[]),dr=lsj
  o.querySelectorAll('[data-un]').forEach(b=>b.onclick=()=>{const a=lsj(WSV,[]);a.splice(+b.dataset.un,1);lsw(WSV,a);wkRender()});
  o.querySelectorAll('[data-us]').forEach(b=>b.onclick=()=>wkUse(list[+b.dataset.us]));
  o.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{const x=list[+b.dataset.rs];lsw(WDS,lsj(WDS,[]).filter(z=>z.titulo!==x.titulo));wkRender()})}
-function wkUse(x){CUR=null;chSend(`Quiero hacer este vídeo: «${x.titulo}». Ángulo: ${x.angulo||'-'}.${x.ref?` Se basa en «${x.ref.t}» (${nf(x.ref.v)} vistas).`:''} Dame 3 títulos, la idea de miniatura con su prompt completo, y la estructura del guion (gancho de los primeros 30 s y los re-ganchos).`)}
+function wkUse(x){CUR=null;chSend(`Quiero hacer este vídeo: «${x.titulo}». Ángulo: ${x.angulo||'-'}.${x.ref?` Se basa en «${x.ref.t}» (${nf(x.ref.v)} vistas).`:''} Dame 3 títulos y la idea de miniatura con su prompt completo.`,{offerG:x.titulo})}
 $$('#iddTabs button').forEach(b=>b.onclick=()=>{WTAB=b.dataset.w;wkRender()});
 $('#nav [data-t=idd]').addEventListener('click',()=>{if(!lsj('wk1',null)||lsj('wk1',{}).day!==today())wkLoad();else wkRender()});
 

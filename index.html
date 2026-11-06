@@ -648,25 +648,26 @@ if(val('k_yt'))nicheRefs().catch(()=>{});
 const MC_DEF='@M2Studio-Oficial';
 $('#mcI').value=lsj('mych','')||MC_DEF;
 let MCV=[],MCAUTO=0;
-const pctl=(a,x)=>a.length<2?50:Math.round(100*a.filter(y=>y<x).length/(a.length-1));
 async function mcLoad(force){const q=$('#mcI').value.trim();if(!q)throw Error('Escribe tu @canal.');lsw('mych',q);
  const ck=lsj('mcc',null);let c,vs;
  if(!force&&ck&&ck.q===q&&Date.now()-ck.t<6*36e5){c=ck.c;vs=ck.vs}
  else{c=await resolveCh(q);const j=await yt('playlistItems',`part=contentDetails&maxResults=50&playlistId=${c.up}`);vs=(await vdet((j.items||[]).map(i=>i.contentDetails.videoId))).map(v=>mapV(v,c.t,c.s));lsw('mcc',{q,t:Date.now(),c,vs})}
  if(!vs.length)throw Error('Ese canal no tiene vídeos públicos.');
- const grp=v=>v.d<=180?'s':'l',dias=v=>Math.max(1,(Date.now()-new Date(v.p))/864e5);
- const sc=r=>Math.max(5,Math.min(95,Math.round(50+25*Math.log2(Math.max(r,1e-3)))));
- const eng=v=>v.v?(v.l+3*v.cm)/v.v:0;
- MCV=vs.map(v=>{const ref=vs.filter(w=>grp(w)===grp(v)&&dias(w)>=14),m=med(ref.map(w=>w.v))||med(vs.filter(w=>grp(w)===grp(v)).map(w=>w.v))||1,me=med(ref.map(eng))||0;
-  const al=sc(v.v/m),it=me&&v.v>=50?sc(eng(v)/me):null,pronto=dias(v)<14;
-  return{...v,x:v.v/m,xl:'tu media',al,it,pronto,nota:pronto?null:Math.round(it==null?al:.7*al+.3*it),vd:Math.round(v.v/dias(v))}});
+ MCV=vs.map(v=>({...v,vd:Math.round(v.v/Math.max(1,(Date.now()-new Date(v.p))/864e5))}));
  const o=$('#outMc');o.innerHTML='';
  const top=document.createElement('div');top.className='res';
- top.innerHTML=`<h3><span>${esc(c.t)}</span></h3><div class="pre">${c.s!=null?nf(c.s)+' suscriptores · ':''}${nf(vs.length)} vídeos analizados</div><p class="hint" style="margin:8px 0 0"><b>Rendimiento</b> = cómo le va a cada vídeo frente a tus otros vídeos (datos públicos). La nota del título y de la miniatura sale al pulsar «🎯 Puntuar y mejorar»: se compara con vídeos reales de otros canales que han funcionado con el mismo tema.<br>:<br>• <b>Alcance</b> (70 %): vistas frente a tu vídeo normal del mismo formato. 50 = como siempre, 75 = el doble, 25 = la mitad.<br>• <b>Interés</b> (30 %): likes y comentarios por cada vista frente a tu media. Mide si a quien lo vio le gustó.<br>• Los vídeos de menos de 14 días no llevan nota: aún no han tenido tiempo.<br>La calidad de verdad (CTR y retención) solo está en YouTube Studio.</p>`;o.append(top);
- const L=document.createElement('div');L.className='res';L.innerHTML='<h3><span>Tus vídeos · del más nuevo al más antiguo</span></h3>'+MCV.map((v,k)=>{const nc=v.nota>=65?'h':v.nota>=40?'m':'w';
-  return `<div class="vc" style="flex-wrap:wrap"><a href="https://youtu.be/${v.i}" target="_blank" rel="noopener"><img loading="lazy" alt="" src="${ea(v.th)}"></a><div class="vi" style="flex:1"><b>${esc(v.t)}</b><span class="hint">${nf(v.v)} vistas · ${nf(v.vd)}/día · ${ago(v.p)}</span><div>${v.pronto?'<span class="x">⏳ Muy nuevo</span>':`<span class="x ${nc}">Rendimiento ${v.nota}/100</span><span class="hint" style="margin-right:8px">Alcance ${v.al}${v.it!=null?' · Interés '+v.it:''}</span>`}<span class="x">×${v.x>=10?Math.round(v.x):v.x.toFixed(1)} tu media</span><span class="tag">${v.d<=180?'Short':'Largo'}</span></div><div class="vb"><button class="btn sm" data-mk="${k}">🎯 Puntuar y mejorar</button></div></div><div id="mcR${k}" style="flex-basis:100%"></div></div>`}).join('');
- o.append(L);L.querySelectorAll('[data-mk]').forEach(b=>b.onclick=()=>mcFix(+b.dataset.mk,b))}
-async function mcFix(k,b){const v=MCV[k],box=$('#mcR'+k);msg('');b.disabled=true;const old=b.textContent;const st=t=>b.textContent=t;
+ top.innerHTML=`<h3><span>${esc(c.t)}</span></h3><p class="hint" style="margin:0">La nota mide UNA cosa: <b>si el título y la miniatura dan ganas de hacer clic</b>, comparados con vídeos del mismo tema de otros canales que han conseguido muchísimos clics (muchas más visitas que suscriptores tiene su canal). Pulsa «🎯 Puntuar» en cada vídeo; la nota se queda guardada.</p><div class="bar"><button class="btn s" id="mcAll">🎯 Puntuar los 5 más nuevos sin nota</button></div>`;o.append(top);
+ const L=document.createElement('div');L.className='res';L.innerHTML='<h3><span>Tus vídeos · del más nuevo al más antiguo</span></h3>'+MCV.map((v,k)=>`<div class="vc" style="flex-wrap:wrap"><a href="https://youtu.be/${v.i}" target="_blank" rel="noopener"><img loading="lazy" alt="" src="${ea(v.th)}"></a><div class="vi" style="flex:1"><b>${esc(v.t)}</b><span class="hint">${nf(v.v)} vistas · ${ago(v.p)} · ${v.d<=180?'Short':'Largo'}</span><div id="mcB${k}">${mcBadges(v)}</div><div class="vb"><button class="btn sm" data-mk="${k}">${mcGet(v)?'👁️ Ver detalle':'🎯 Puntuar'}</button></div></div><div id="mcR${k}" style="flex-basis:100%"></div></div>`).join('');
+ o.append(L);L.querySelectorAll('[data-mk]').forEach(b=>b.onclick=()=>{const k=+b.dataset.mk;mcGet(MCV[k])?mcShow(k):mcFix(k,b)});
+ $('#mcAll').onclick=async e=>{const bt=e.target;bt.disabled=true;const pend=MCV.map((v,k)=>k).filter(k=>!mcGet(MCV[k])).slice(0,5);
+  if(!pend.length){toast('Ya están puntuados');bt.disabled=false;return}
+  for(const k of pend){const b=document.querySelector(`[data-mk="${k}"]`);await mcFix(k,b,true)}bt.disabled=false;toast('Hecho')}}
+const MCS='mcs1',mcAllS=()=>lsj(MCS,{});
+const mcGet=v=>{const x=mcAllS()[v.i];return x&&x.tt===v.t&&x.th===v.th?x:null};
+const kk=n=>n>=75?'h':n>=50?'m':'w';
+function mcBadges(v){const x=mcGet(v);if(!x)return '<span class="x">Sin puntuar</span>';const d=x.d,tn=Math.round(+d.titulo_nota||0),mn=d.miniatura_nota==null?null:Math.round(+d.miniatura_nota||0);
+ return `<span class="x ${kk(tn)}">Título ${tn}/100</span>${mn==null?'<span class="x">Miniatura sin nota</span>':`<span class="x ${kk(mn)}">Miniatura ${mn}/100</span>`}`}
+async function mcFix(k,b,quiet){const v=MCV[k];msg('');b.disabled=true;const old=b.textContent;const st=t=>b.textContent=t;
  try{if(!val('k_yt'))throw Error('Hace falta la clave de YouTube Data (en Ajustes) para buscar vídeos reales.');const sh=v.d<=180;
   st('Entendiendo el tema…');let qs=[];
   try{const e=await aiJ(`Título de un vídeo: «${v.t}». Dame 3 búsquedas cortas (2 a 4 palabras cada una) que escribiría alguien en YouTube para encontrar vídeos del MISMO TEMA, de la más concreta a la más general. Responde SOLO con JSON válido: {"busquedas":["","",""]}`);qs=(e.busquedas||[]).map(String).filter(Boolean).slice(0,3)}catch(e){}
@@ -691,8 +692,11 @@ Si algo mío está al nivel de los reales, dilo y dale nota alta; no bajes notas
 
 Luego: 3 títulos nuevos basados en las estructuras de los reales (cada uno dice en qué vídeo real se inspira) y 1 miniatura nueva basada en los patrones que se repiten en las miniaturas reales, en el estilo del canal (stickman 2D clásico: cabeza redonda blanca, cuerpo de línea negra, manos negras sin dedos, fondo ilustrado rico y saturado), con prompt COMPLETO en inglés: texto exacto entre comillas, posición, tamaño, color y tipografía, composición, emoción y formato 16:9 1280x720.
 Responde SOLO con JSON válido: {"titulo_nota":0,"titulo_criterios":[{"c":"","n":0,"por_que":""}],"miniatura_nota":0,"miniatura_criterios":[{"c":"","n":0,"por_que":""}],"patrones_reales":"qué se repite en los títulos y miniaturas reales","titulos":[{"t":"","inspirado_en":""}],"miniatura":{"texto":"","idea":"","inspirada_en":"","prompt":""}}`,{json:true,imgs}));
-  box.innerHTML='';
-  const kk=n=>n>=75?'h':n>=50?'m':'w',crit=a=>(a||[]).map(x=>`<div class="it"><span><b>${esc(x.c||'')}</b> · ${+x.n||0}/20<br><span class="hint">${esc(x.por_que||'')}</span></span></div>`).join('');
+  const all=mcAllS();all[v.i]={tt:v.t,th:v.th,t:Date.now(),d,qs,ni:IM.length,own:own.length,R:R.slice(0,6)};const ks=Object.keys(all).sort((a,c)=>all[c].t-all[a].t).slice(0,60),n={};ks.forEach(z=>n[z]=all[z]);lsw(MCS,n);
+  $('#mcB'+k).innerHTML=mcBadges(v);b.disabled=false;b.textContent='👁️ Ver detalle';if(!quiet)mcShow(k);return}
+ catch(e){err(e)}b.disabled=false;b.textContent=old}
+function mcShow(k){const v=MCV[k],x=mcGet(v),box=$('#mcR'+k);if(!x)return;if(box.innerHTML){box.innerHTML='';return}const d=x.d,R=x.R,qs=x.qs,IM={length:x.ni};
+  const crit=a=>(a||[]).map(x=>`<div class="it"><span><b>${esc(x.c||'')}</b> · ${+x.n||0}/20<br><span class="hint">${esc(x.por_que||'')}</span></span></div>`).join('');
   const tn=Math.round(+d.titulo_nota||0),mn=d.miniatura_nota==null?null:Math.round(+d.miniatura_nota||0);
   box.append(card('📚 Comparado con estos vídeos reales',`<p class="hint" style="margin:0 0 6px">De otros canales, búsquedas: ${esc(qs.join(' · '))}. ${IM.length?'La IA ha visto '+IM.length+' de sus miniaturas.':'La IA no pudo ver sus miniaturas, solo los títulos.'}</p><div class="why"><b>Lo que se repite en ellos:</b> ${esc(d.patrones_reales||'')}</div>`+R.slice(0,6).map(r=>vcard(r,0)).join(''),R.map(r=>r.t).join('\n'),'Copiar títulos'));
   box.append(card(`<span class="x ${kk(tn)}" style="margin:0">Título ${tn}/100</span>`,`<div><b>${esc(v.t)}</b></div>`+crit(d.titulo_criterios),v.t));
@@ -702,7 +706,6 @@ Responde SOLO con JSON válido: {"titulo_nota":0,"titulo_criterios":[{"c":"","n"
   c1.querySelectorAll('[data-c]').forEach(z=>z.onclick=()=>cp(ts[+z.dataset.c].t));box.append(c1);
   box.append(card('🖼️ Miniatura nueva (basada en las reales)',`<div><b>Texto:</b> ${esc(mi.texto||'—')}</div><div class="hint" style="margin:4px 0">${esc(mi.idea||'')}</div><div class="hint" style="margin:0 0 8px">Se inspira en: ${esc(mi.inspirada_en||'')}</div><div class="pre" style="background:var(--in);padding:10px;border-radius:10px;font-size:.9rem">${esc(mi.prompt||'')}</div>`,mi.prompt||'','Copiar prompt'));
   box.scrollIntoView({behavior:'smooth',block:'start'})}
- catch(e){err(e)}b.disabled=false;b.textContent=old}
 $('#mcGo').onclick=()=>go('#ldMc',()=>mcLoad(true));
 $('#nav [data-t=mic]').addEventListener('click',()=>{if(!MCAUTO&&val('k_yt')){MCAUTO=1;go('#ldMc',()=>mcLoad(false))}});
 

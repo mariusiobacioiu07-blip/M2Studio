@@ -339,7 +339,7 @@ button,label,a,.di,.qa button{touch-action:manipulation;cursor:pointer}
 <label class="sel" style="margin:4px 0 10px"><input type="checkbox" id="onlyEs" checked><span><b>Solo vídeos en español</b><br><span class="hint">El país solo indica dónde se puede ver el vídeo, no su idioma. Este filtro mira el idioma del audio y el texto del título y la descripción.</span></span></label><label class="l">Categoría <span class="hint">(solo para «Populares ahora»)</span></label><select id="cat"><option value="" selected>Todas</option><option value="27">Educación</option><option value="28">Ciencia y tecnología</option><option value="1">Cine y animación</option><option value="24">Entretenimiento</option></select>
 <div class="bar"><button class="btn s" id="tPop">Populares ahora</button><button class="btn s" id="tKw">Top de la semana</button><button class="btn s" id="tGem">Tendencias web (Gemini)</button><button class="btn" id="tAn">🤖 Analizar con IA</button></div></div><div class="box" style="border-top-color:var(--yl)"><h3 class="bt">🔥 Detector de vídeos sorpresa</h3><p class="hint" style="margin:0 0 14px">Vídeos de tu nicho con muchas más vistas de lo normal para su canal. Cada búsqueda gasta unas 100 unidades de cuota (tienes 10.000 al día).</p>
 <div class="g2"><div><label class="l">Ventana</label><select id="sW"><option value="7">Últimos 7 días</option><option value="30" selected>Últimos 30 días</option><option value="90">Últimos 90 días</option></select></div><div><label class="l">Tipo</label><select id="sT"><option value="long" selected>Largos</option><option value="short">Shorts</option><option value="all">Largos y Shorts</option></select></div></div>
-<div class="g2" style="margin-top:4px"><div><label class="l">Tamaño máx. del canal</label><select id="sS"><option value="0">Cualquiera</option><option value="10000">&lt; 10 mil subs</option><option value="100000" selected>&lt; 100 mil subs</option><option value="500000">&lt; 500 mil subs</option><option value="1000000">&lt; 1 M subs</option></select></div><div><label class="l">Tema <span class="hint">(vacío = tus pilares)</span></label><input id="sK" placeholder="Egipto, volcanes…"></div></div>
+<div class="g2" style="margin-top:4px"><div><label class="l">Tamaño máx. del canal</label><select id="sS"><option value="0">Cualquiera</option><option value="10000">&lt; 10 mil subs</option><option value="100000" selected>&lt; 100 mil subs</option><option value="500000">&lt; 500 mil subs</option><option value="1000000">&lt; 1 M subs</option></select></div><div><label class="l">Tema <span class="hint">(vacío = tus pilares)</span></label><input id="sK" placeholder="Egipto, volcanes… (separa los temas con comas, sin límite)"><p class="hint" id="sKc" style="margin:6px 0 0"></p></div></div>
 <div class="g2" style="margin-top:4px"><div><label class="l">Mostrar</label><select id="sM"><option value="30">30</option><option value="60" selected>60</option><option value="100">100</option></select></div><div><label class="l">Repetidos</label><label class="sel" style="margin:0"><input type="checkbox" id="sH" checked><span>Ocultar los que ya he visto</span></label></div></div>
 <div class="bar"><button class="btn" id="tSur">🔥 Buscar sorpresas</button><button class="btn s" id="tSurN">🔄 Buscar otras nuevas</button><button class="btn s" id="tSurR">Olvidar vistos</button></div></div>
 <div class="ld" id="ldTend"><div class="sp"></div>Buscando…</div><div id="outTend"></div><div id="outAn"></div></section>
@@ -623,7 +623,11 @@ const seenAdd=ids=>{const a=lsj('seen',[]),s=new Set(a);ids.forEach(i=>{if(!s.ha
 async function surFetch(c,W,T,K,R){
  const after=new Date(Date.now()-W*864e5).toISOString(),dur=T==='short'?['short']:T==='long'?(K?['medium','long']:['medium']):['short','medium'];
  c.pg=c.pg||{};c.used=c.used||[];let qs;
- if(K)qs=[K];
+ if(K){const terms=[...new Set(K.split(/[,;\n]+/).map(t=>t.trim()).filter(Boolean))];
+  const open=terms.filter(q=>dur.some(d=>c.pg[q+'|'+d]!=='END'));
+  if(!open.length)return{cost:0,qs:[],done:1};
+  const nuevos=open.filter(q=>!c.used.includes(q)),resto=open.filter(q=>c.used.includes(q)).sort(()=>Math.random()-.5);
+  qs=nuevos.concat(resto)}
  else qs=Object.values(PIL).map(l=>{const fresh=l.filter(q=>{const t=c.pg[q+'|'+dur[0]];return !c.used.includes(q)||(t&&t!=='END')});const pool=fresh.length?fresh:l;return pool[Math.floor(Math.random()*pool.length)]});
  const jobs=[];qs.forEach(q=>dur.forEach(d=>{const pk=q+'|'+d,tok=c.pg[pk];if(tok==='END')return;
   jobs.push(yt('search',`part=snippet&type=video&order=viewCount&maxResults=50&relevanceLanguage=es&videoDuration=${d}&publishedAfter=${encodeURIComponent(after)}${R==='ALL'?'':'&regionCode='+R}&q=${encodeURIComponent(q)}${tok?'&pageToken='+tok:''}`).then(j=>{c.pg[pk]=j.nextPageToken||'END';return j}))}));
@@ -638,14 +642,16 @@ async function surRun(force){
  let c=cget(key)||{a:[],pg:{},used:[]},cost=0,qs=[];const seen=seenL();
  const pick=()=>c.a.filter(v=>v.s!=null&&v.v>=2000&&(!S||v.s<S)&&(T==='all'||(T==='short')===(v.d<=180))&&esOK(v)&&!(H&&seen.has(v.i))).map(v=>({...v,x:(v.s>0?v.v/v.s:null),xl:'vs subs'})).sort((a,b)=>b.x-a.x);
  let rows=pick();
- for(let k=0;k<3&&(force||!c.a.length||rows.length<Math.min(M,20));k++){const r=await surFetch(c,W,T,K,R);cost+=r.cost;qs=qs.concat(r.qs);rows=pick();force=false;if(rows.length>=Math.min(M,20))break}
+ const nT=K?new Set(K.split(/[,;\n]+/).map(t=>t.trim()).filter(Boolean)).size:0;for(let k=0;k<(nT>5?1:3)&&(force||!c.a.length||rows.length<Math.min(M,20));k++){const r=await surFetch(c,W,T,K,R);if(r.done)break;cost+=r.cost;qs=qs.concat(r.qs);rows=pick();force=false;if(rows.length>=Math.min(M,20))break}
  cset(key,c);rows=rows.slice(0,M);
- if(!rows.length)throw Error(H?'No quedan sorpresas nuevas con estos filtros. Pulsa «Olvidar vistos», amplía la ventana o sube el tamaño máximo del canal.':'No hay sorpresas con esos filtros. Prueba una ventana más larga o un canal más grande.');
+ if(!rows.length)throw Error(H?'No quedan sorpresas nuevas con estos temas en esta ventana. Pulsa «Olvidar vistos», prueba otros temas (sepáralos con comas), amplía la ventana o sube el tamaño máximo del canal.':'No hay sorpresas con esos filtros. Prueba una ventana más larga o un canal más grande.');
  seenAdd(rows.map(v=>v.i));
  TR=rows.map(v=>`${v.t} — ${v.c} (${nf(v.v)} vistas, ${nf(v.s)} suscriptores, ×${v.x.toFixed(1)} sobre su tamaño)`).join('\n');
  $('#outTend').innerHTML='';$('#outAn').innerHTML='';
  $('#outTend').append(card('🔥 Sorpresas · '+rows.length,`<p class="hint" style="margin:0 0 6px">Ordenado por vistas ÷ suscriptores del canal. ${cost?'Cuota gastada ≈ '+cost+' unidades'+(qs.length?' · temas: '+esc([...new Set(qs)].join(', ')):'')+'.':'Sin gastar cuota (guardado).'} ${H?'Ya no se repetirán en las próximas búsquedas.':''} Pulsa «Analizar con IA» para elegir los 5 que más te convienen.</p>`+rows.map(v=>vcard(v,1)).join(''),TR,'Copiar lista'))}
 $('#tSur').onclick=()=>run(()=>surRun(false));
+const sKc=()=>{const n=new Set($('#sK').value.split(/[,;\n]+/).map(t=>t.trim()).filter(Boolean)).size,per=$('#sT').value==='all'||$('#sT').value==='long'?200:100,u=n*per;$('#sKc').textContent=n?`${n} tema${n>1?'s':''} · gasta unas ${u.toLocaleString('es-ES')} unidades de las 10.000 diarias${u>10000?' ⚠️ ¡Te pasas del límite diario! Quita temas.':u>7000?' (casi todo tu cupo de hoy)':''}`:'Vacío: busca en tus pilares.'};
+$('#sK').addEventListener('input',sKc);$('#sT').addEventListener('change',sKc);sKc();
 $('#tSurN').onclick=()=>run(()=>surRun(true));
 $('#tSurR').onclick=()=>{lsw('seen',[]);toast('Historial de vistos borrado')};
 

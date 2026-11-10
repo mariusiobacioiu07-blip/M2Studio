@@ -623,9 +623,9 @@ const seenAdd=ids=>{const a=lsj('seen',[]),s=new Set(a);ids.forEach(i=>{if(!s.ha
 async function surFetch(c,W,T,K,R){
  const after=new Date(Date.now()-W*864e5).toISOString(),dur=T==='short'?['short']:T==='long'?(K?['medium','long']:['medium']):['short','medium'];
  c.pg=c.pg||{};c.used=c.used||[];let qs;
- if(K){const terms=[...new Set(K.split(/[,;\n]+/).map(t=>t.trim()).filter(Boolean))];
+ if(K){const terms=[...new Set(K.split(/[,;\n.|/·，、]+|\s+-\s+/).map(t=>t.trim()).filter(Boolean))];
   const open=terms.filter(q=>dur.some(d=>c.pg[q+'|'+d]!=='END'));
-  if(!open.length)return{cost:0,qs:[],done:1};
+  if(!open.length){if(!c.reset){c.reset=1;terms.forEach(q=>dur.forEach(d=>delete c.pg[q+'|'+d]));return surFetch(c,W,T,K,R)}return{cost:0,qs:[],done:1}}
   const nuevos=open.filter(q=>!c.used.includes(q)),resto=open.filter(q=>c.used.includes(q)).sort(()=>Math.random()-.5);
   qs=nuevos.concat(resto)}
  else qs=Object.values(PIL).map(l=>{const fresh=l.filter(q=>{const t=c.pg[q+'|'+dur[0]];return !c.used.includes(q)||(t&&t!=='END')});const pool=fresh.length?fresh:l;return pool[Math.floor(Math.random()*pool.length)]});
@@ -642,7 +642,7 @@ async function surRun(force){
  let c=cget(key)||{a:[],pg:{},used:[]},cost=0,qs=[];const seen=seenL();
  const pick=()=>c.a.filter(v=>v.s!=null&&v.v>=2000&&(!S||v.s<S)&&(T==='all'||(T==='short')===(v.d<=180))&&esOK(v)&&!(H&&seen.has(v.i))).map(v=>({...v,x:(v.s>0?v.v/v.s:null),xl:'vs subs'})).sort((a,b)=>b.x-a.x);
  let rows=pick();
- const nT=K?new Set(K.split(/[,;\n]+/).map(t=>t.trim()).filter(Boolean)).size:0;for(let k=0;k<(nT>5?1:3)&&(force||!c.a.length||rows.length<Math.min(M,20));k++){const r=await surFetch(c,W,T,K,R);if(r.done)break;cost+=r.cost;qs=qs.concat(r.qs);rows=pick();force=false;if(rows.length>=Math.min(M,20))break}
+ const nT=K?new Set(K.split(/[,;\n.|/·，、]+|\s+-\s+/).map(t=>t.trim()).filter(Boolean)).size:0;for(let k=0;k<(nT>5?1:3)&&(force||!c.a.length||rows.length<Math.min(M,20));k++){const r=await surFetch(c,W,T,K,R);if(r.done)break;cost+=r.cost;qs=qs.concat(r.qs);rows=pick();force=false;if(rows.length>=Math.min(M,20))break}
  cset(key,c);rows=rows.slice(0,M);
  if(!rows.length){const A=c.a,dg=c.diag||{},n=f=>A.filter(f).length,L=[];
  L.push(`Temas buscados: ${dg.qs??'—'} · búsquedas OK: ${dg.ok??'—'} de ${dg.jobs??'—'}${dg.bad?' · fallidas: '+dg.bad+' ('+dg.err+')':''}`);
@@ -656,7 +656,7 @@ if(!rows.length)throw Error(H?'No quedan sorpresas nuevas con estos temas en est
  $('#outTend').innerHTML='';$('#outAn').innerHTML='';
  $('#outTend').append(card('🔥 Sorpresas · '+rows.length,`<p class="hint" style="margin:0 0 6px">Ordenado por vistas ÷ suscriptores del canal. ${cost?'Cuota gastada ≈ '+cost+' unidades'+(qs.length?' · temas: '+esc([...new Set(qs)].join(', ')):'')+'.':'Sin gastar cuota (guardado).'} ${H?'Ya no se repetirán en las próximas búsquedas.':''} Pulsa «Analizar con IA» para elegir los 5 que más te convienen.</p>`+rows.map(v=>vcard(v,1)).join(''),TR,'Copiar lista'))}
 $('#tSur').onclick=()=>run(()=>surRun(false));
-const sKc=()=>{const n=new Set($('#sK').value.split(/[,;\n]+/).map(t=>t.trim()).filter(Boolean)).size,per=$('#sT').value==='all'||$('#sT').value==='long'?200:100,u=n*per;$('#sKc').textContent=n?`${n} tema${n>1?'s':''} · gasta unas ${u.toLocaleString('es-ES')} unidades de las 10.000 diarias${u>10000?' ⚠️ ¡Te pasas del límite diario! Quita temas.':u>7000?' (casi todo tu cupo de hoy)':''}`:'Vacío: busca en tus pilares.'};
+const sKc=()=>{const n=new Set($('#sK').value.split(/[,;\n.|/·，、]+|\s+-\s+/).map(t=>t.trim()).filter(Boolean)).size,per=$('#sT').value==='all'||$('#sT').value==='long'?200:100,u=n*per;const tl=[...new Set($('#sK').value.split(/[,;\n.|/·，、]+|\s+-\s+/).map(t=>t.trim()).filter(Boolean))];$('#sKc').textContent=n?`${n} tema${n>1?'s':''} (${tl.slice(0,6).map(t=>'«'+t+'»').join(' ')}${tl.length>6?' …':''}) · gasta unas ${u.toLocaleString('es-ES')} unidades de las 10.000 diarias${u>10000?' ⚠️ ¡Te pasas del límite diario! Quita temas.':u>7000?' (casi todo tu cupo de hoy)':''}`:'Vacío: busca en tus pilares.'};
 $('#sK').addEventListener('input',sKc);$('#sT').addEventListener('change',sKc);sKc();
 $('#tSurN').onclick=()=>run(()=>surRun(true));
 $('#tSurR').onclick=()=>{lsw('seen',[]);toast('Historial de vistos borrado')};

@@ -506,7 +506,8 @@ async function gen(out,ld,user,o){msg('');$(out).innerHTML='';busy(ld,1);
 $$('[data-gen]').forEach(b=>b.onclick=()=>{
  if(b.dataset.gen==='ideas')doIdeas();
  else{if(typeof gGround==='function')return gGround();const s=rv('gf')==='short';gen('#outGuion','#ldGuion',`Escribe un guion de ${s?'Short':'vídeo largo'} sobre: ${$('#gT').value}. Duración: ${$('#gD').value||'la que marque las reglas para este formato'}.\nNotas: ${$('#gN').value}\nEstructura (sin escribir sus nombres): gancho inicial que entregue la promesa en los primeros segundos, desarrollo con un giro, dato nuevo o pregunta cada 20–30 s para sostener la retención, y cierre${s?' que enlace con el inicio (bucle)':''}. Calcula entre 150 y 160 palabras por minuto de locución y cumple esa longitud. Devuelve SOLO la narración, sin frase introductoria ni comentarios finales.${REFUERZO()}${NARR}`,{post:soloNarr}).then(t=>{if(!t)return;const b=document.createElement('div');b.className='bar';b.innerHTML='<button class="btn s">🔍 Revisar este guion</button><button class="btn s">📋 Comprobar con las reglas</button>';b.firstChild.onclick=()=>{$('#rG').value=t;$(`[name=rf][value=${s?'short':'largo'}]`).checked=true;pillGo('guion','p-gr');$('#goRev').click()};b.lastChild.onclick=()=>{$('#rG').value=t;$(`[name=rf][value=${s?'short':'largo'}]`).checked=true;pillGo('guion','p-gr');$('#goChk').click()};$('#outGuion').append(b)})}});
-const yt=async(p,q)=>{const k=val('k_yt');if(!k)throw Error('Falta la clave de YouTube Data. Ponla en Ajustes.');const r=await fetch(`https://www.googleapis.com/youtube/v3/${p}?${q}&key=${k}`),j=await r.json();if(!r.ok)throw Error(j.error?.message||r.status);return j};
+const qDay=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Los_Angeles'}),qGet=()=>{const o=lsj('ytq',{});return o.d===qDay()?o.u:0},qAdd=p=>lsw('ytq',{d:qDay(),u:qGet()+(p==='search'?100:1)});
+const yt=async(p,q)=>{const k=val('k_yt');if(!k)throw Error('Falta la clave de YouTube Data. Ponla en Ajustes.');qAdd(p);const r=await fetch(`https://www.googleapis.com/youtube/v3/${p}?${q}&key=${k}`),j=await r.json();if(!r.ok)throw Error(j.error?.message||r.status);return j};
 const nf=n=>Number(n).toLocaleString('es-ES');
 function list(items){TR=items.map(v=>`${v.t} — ${v.c} (${nf(v.v)} vistas)`).join('\n');$('#outTend').innerHTML='';$('#outTend').append(card('Resultados',items.map(v=>`<div class="it"><span><b><a href="https://youtu.be/${v.i}" target="_blank" rel="noopener" style="color:inherit">${esc(v.t)}</a></b><br><span class="hint">${esc(v.c)} · ${nf(v.v)} vistas</span></span></div>`).join(''),TR))}
 const run=async f=>{msg('');busy('#ldTend',1);try{await f()}catch(e){err(e)}busy('#ldTend',0)};
@@ -1368,5 +1369,138 @@ $('#m2Import').onchange=async e=>{try{const f=e.target.files[0];if(!f)return;if(
 /* Snapshot explorer: only differences between actual API observations. */
 const research=document.createElement('div');research.className='box';research.innerHTML=`<h3>Investigación con evidencia</h3><p class="hint">Muestra de resultados públicos en español; no es todo YouTube. El ratio vistas/suscriptores no mide competencia ni rendimiento habitual. Las sugerencias no incluyen volumen de búsqueda.</p><label class="l">Tema</label><input id="m2Query" placeholder="cómo conservaban alimentos en Egipto"><label class="l">Ventana de publicación</label><select id="m2Window"><option value="7">Últimos 7 días</option><option value="30" selected>Últimos 30 días</option><option value="365">Último año: referencias duraderas</option></select><div class="bar"><button class="btn" id="m2Research">Consultar y guardar medición</button></div><div id="m2ResearchOut" aria-live="polite"></div>`;$('#tend').prepend(research);
 $('#m2Research').onclick=async()=>{const q=$('#m2Query').value.trim();if(!q)return msg('Escribe el tema.');const b=$('#m2Research');b.disabled=true;try{const days=+$('#m2Window').value;const [rs,ks]=await Promise.allSettled([refsFor(q,'l',days),busq(q)]);if(rs.status==='rejected')throw rs.reason;const R=rs.value,kw=ks.status==='fulfilled'?ks.value:[],cache=lsj(RFK,{}),ct=cache[norm(qOf(q))+'|l|'+days]?.t||Date.now();let hist=lsj('m2PublicSnapshots',{});for(const r of R){const a=hist[r.i]||[];if(!a.some(x=>x.t===ct))a.push({t:ct,v:r.v});hist[r.i]=a.sort((a,b)=>a.t-b.t).slice(-12)}const keys=Object.keys(hist).sort((a,b)=>hist[b].at(-1).t-hist[a].at(-1).t).slice(0,300);hist=Object.fromEntries(keys.map(k=>[k,hist[k]]));m2Save('m2PublicSnapshots',hist);const intent=k=>/cómo|como/.test(k)?'Cómo se hacía':/por qué|porque|por que/.test(k)?'Explicación':/sobreviv|vivir/.test(k)?'Supervivencia':'Tema general';$('#m2ResearchOut').innerHTML=`<p class="hint">Medición: ${m2Date(ct)}. Ventana: ${days} días. La caché no cuenta como nueva medición; se renueva después de ${days<60?'24':'72'} h. Formato filtrado por duración >3 min; no clasifica todos los vídeos cortos.</p><h4>Sugerencias (intención clasificada por reglas)</h4>${kw.length?kw.map(k=>`<p><a target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=${encodeURIComponent(k)}">${esc(k)}</a> · ${intent(k)}</p>`).join(''):'<p>No se pudieron recuperar sugerencias; no se inventan términos.</p>'}<h4>Referencias y evolución observada</h4>${R.length?R.map(r=>{const a=hist[r.i],last=a.at(-1),prev=a.length>1?a.at(-2):null,delta=prev?last.v-prev.v:null,h=prev?(last.t-prev.t)/36e5:0;return `<div class="it"><span><a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=${encodeURIComponent(r.i)}">${esc(r.t)}</a><br><span class="hint">${nf(r.v)} vistas · publicado ${esc(String(r.p))} · vistas/subs ${xs(r.x)}<br>${prev&&delta>=0&&h>0?`${nf(delta)} vistas adicionales entre ${m2Date(prev.t)} y ${m2Date(last.t)} (${(delta/h).toFixed(1)}/h de media). No prueba aceleración.`:prev?'El contador se revisó a la baja; no se calcula crecimiento.':'Una sola medición: evidencia insuficiente para afirmar crecimiento.'}<br>${days<=30?'Candidato reciente; éxito relativo por confirmar.':'Referencia potencialmente duradera; demanda sostenida por confirmar.'} Falta una muestra comparable del historial del canal para evaluar su rendimiento habitual.</span></span></div>`}).join(''):'<p>No hay referencias con estos filtros. Prueba otra ventana o tema; no se amplía la búsqueda silenciosamente.</p>'}`}catch(e){err(e)}finally{b.disabled=false}};
+/* ===== Buscador con filtros (como Investigación de YouTube Studio) ===== */
+(()=>{
+document.head.insertAdjacentHTML('beforeend',`<style id="invCss">
+#invBox .ivq{display:flex;gap:8px}#invBox .ivq input{flex:1;min-width:0}#invBox .ivq .btn{flex:none}
+#invBox label.l{margin:14px 0 6px}
+.ivchips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.ivc{border:1px solid var(--ln);background:var(--in);color:var(--tx);border-radius:99px;padding:7px 13px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.ivc.on{background:var(--bl,#6955db);border-color:var(--bl,#6955db);color:#fff}
+.ivn{display:grid;grid-template-columns:1fr;gap:0 14px}.ivg{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+@media(min-width:700px){.ivn,.ivg{grid-template-columns:1fr 1fr 1fr}}
+.ivmm{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ivmm input{min-width:0}
+#invInfo{margin:12px 0 0}
+#invOut{margin-bottom:26px}
+.ivhead{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;margin:4px 2px 0;font-size:14px}
+.ivf{font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;background:var(--in);border:1px solid var(--ln);color:var(--mu)}
+.ivgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px 12px;margin-top:14px}
+@media(min-width:760px){.ivgrid{grid-template-columns:repeat(3,1fr)}}
+.ivcard{display:block;color:inherit;text-decoration:none;min-width:0}
+.ivth{position:relative;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:var(--in)}
+.ivth img{width:100%;height:100%;object-fit:cover;display:block}
+.ivth span{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.82);color:#fff;font-size:12px;font-weight:700;padding:1px 6px;border-radius:5px}
+.ivt{font-weight:700;font-size:14px;line-height:1.3;margin:8px 0 3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ivm{color:var(--mu);font-size:12.5px;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ivx{display:inline-block;font-weight:800;font-size:12px;padding:0 7px;border-radius:6px;margin-right:6px;background:var(--in);border:1px solid var(--ln);color:var(--tx)}
+.ivx.ivhi{background:var(--okb);color:var(--gn);border-color:transparent}.ivx.ivlo{background:var(--wrb);color:var(--rd);border-color:transparent}
+.iverr{background:var(--wrb);color:var(--rd);border-radius:12px;padding:12px 14px;margin:12px 0;font-size:14px;white-space:pre-line}
+</style>`);
+const REG=[['ES','España'],['US','EE. UU.'],['MX','México'],['AR','Argentina'],['CO','Colombia'],['CL','Chile'],['PE','Perú']],LAT=['MX','AR','CO','CL','PE'];
+const mm=(id,l,ph1,ph2)=>`<div><label class="l">${l}</label><div class="ivmm"><input id="${id}0" inputmode="decimal" placeholder="${ph1}"><input id="${id}1" inputmode="decimal" placeholder="${ph2}"></div></div>`;
+const box=document.createElement('div');box.className='box';box.id='invBox';
+box.innerHTML=`<h3 class="bt">🔎 Buscador con filtros</h3><p class="hint" style="margin:0 0 12px">Como «Investigación» de YouTube Studio, pero los números los escribes tú.</p>
+<div class="ivq"><input id="ivQ" placeholder="edad de hielo supervivencia" enterkeyhint="search"><button class="btn" id="ivGo">Buscar</button></div>
+<div class="ivchips" id="ivRel"></div>
+<div class="ivn">${mm('ivS','Suscriptores','mín','máx (ej. 10k)')}${mm('ivV','Visualizaciones','mín','máx (ej. 500k)')}${mm('ivX','Puntuación atípica','mín (ej. 10)','máx (ej. 1)')}</div>
+<div class="ivg">
+<div><label class="l">Fecha</label><select id="ivD"><option value="0">Cualquier fecha</option><option value="7">Últimos 7 días</option><option value="30">Últimos 30 días</option><option value="90">Últimos 90 días</option><option value="365">Último año</option></select></div>
+<div><label class="l">Duración</label><select id="ivL"><option value="ns">Sin Shorts</option><option value="c">Menos de 10 min</option><option value="m">10 a 30 min</option><option value="l">Más de 30 min</option><option value="all">Todo, con Shorts</option></select></div>
+<div><label class="l">Idioma</label><select id="ivLg"><option value="es">Español</option><option value="en">Inglés</option><option value="">Cualquiera</option></select></div>
+<div><label class="l">YouTube busca por</label><select id="ivO"><option value="relevance">Relevancia</option><option value="viewCount">Más vistos</option><option value="date">Más recientes</option></select></div>
+<div><label class="l">Ordenar por</label><select id="ivSo"><option value="x">Puntuación atípica</option><option value="xa">Atípica: peores primero</option><option value="v">Visualizaciones</option><option value="p">Fecha</option><option value="r">Relevancia</option></select></div>
+</div>
+<label class="l">Región <span class="hint">(cada país marcado es una búsqueda más)</span></label>
+<div class="ivchips" id="ivReg"><button class="ivc" data-r="LAT">Latinoamérica</button>${REG.map(r=>`<button class="ivc" data-r="${r[0]}">${r[1]}</button>`).join('')}</div>
+<p class="hint" id="invInfo"></p>
+<div class="bar" style="margin-top:12px"><button class="btn s" id="ivClr">Limpiar filtros</button></div>`;
+const ld=document.createElement('div');ld.className='ld';ld.id='ldInv';ld.innerHTML='<div class="sp"></div>Buscando…';
+const out=document.createElement('div');out.id='invOut';
+$('#tend').prepend(box,ld,out);
+
+const NUM=['ivS0','ivS1','ivV0','ivV1','ivX0','ivX1'],SEL=['ivD','ivL','ivLg','ivO','ivSo'],DEF={ivD:'0',ivL:'ns',ivLg:'es',ivO:'relevance',ivSo:'x'};
+let regs=new Set(),ST={key:'',rows:[],tok:{},cached:false};
+const pn=s=>{s=String(s||'').toLowerCase().replace(/\s/g,'');if(!s)return null;let f=1;const m=/(k|mil|m|mill|millones)$/.exec(s);if(m){f=/^(k|mil)$/.test(m[1])?1e3:1e6;s=s.slice(0,-m[1].length)}
+ if(/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'');else s=s.replace(',','.');const n=parseFloat(s);return isFinite(n)?n*f:null};
+const kf=n=>n==null?'—':n>=1e6?(n/1e6).toLocaleString('es-ES',{maximumFractionDigits:n>=1e7?0:1})+' M':n>=1e3?(n/1e3).toLocaleString('es-ES',{maximumFractionDigits:n>=1e5?0:1})+' K':String(n);
+const age=p=>{const d=Math.max(0,Math.floor((Date.now()-new Date(p))/864e5));const pl=(n,a,b)=>'hace '+n+' '+(n===1?a:b);return d===0?'hoy':d<14?pl(d,'día','días'):d<60?pl(Math.floor(d/7),'semana','semanas'):d<365?pl(Math.floor(d/30),'mes','meses'):pl(Math.floor(d/365),'año','años')};
+const dur=s=>{s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=String(s%60).padStart(2,'0');return h?h+':'+String(m).padStart(2,'0')+':'+x:m+':'+x};
+const med=a=>{a=a.slice().sort((x,y)=>x-y);const n=a.length;return n?(n%2?a[(n-1)/2]:(a[n/2-1]+a[n/2])/2):null};
+const cost=()=>100*Math.max(1,regs.size);
+const info=t=>{$('#invInfo').textContent=(t?t+' ':'')+`Una búsqueda nueva gasta ≈ ${cost()} unidades. Hoy llevas ≈ ${nf(qGet())} de 10.000. Los filtros de números no gastan nada.`};
+const save=()=>{const o={r:[...regs]};NUM.concat(SEL,['ivQ']).forEach(i=>o[i]=$('#'+i).value);lsw('invF',o)};
+const paintReg=()=>{$$('#ivReg .ivc').forEach(b=>b.classList.toggle('on',b.dataset.r==='LAT'?LAT.every(x=>regs.has(x)):regs.has(b.dataset.r)));info()};
+(()=>{const o=lsj('invF',null);if(o){NUM.concat(SEL,['ivQ']).forEach(i=>{if(o[i]!=null)$('#'+i).value=o[i]});regs=new Set((o.r||[]).filter(x=>REG.some(r=>r[0]===x)))}paintReg()})();
+$$('#ivReg .ivc').forEach(b=>b.onclick=()=>{const r=b.dataset.r;if(r==='LAT'){const all=LAT.every(x=>regs.has(x));LAT.forEach(x=>all?regs.delete(x):regs.add(x))}else regs.has(r)?regs.delete(r):regs.add(r);paintReg();save()});
+
+/* mediana de vistas de los últimos vídeos largos de cada canal (guardada 7 días) */
+async function medians(chs,inf){const C=lsj('invMed',{}),now=Date.now(),need=chs.filter(c=>!(C[c]&&now-C[c][1]<6048e5)),up={};
+ for(const g of chunk(need,10)){const rs=await Promise.allSettled(g.map(c=>yt('playlistItems',`part=contentDetails&maxResults=15&playlistId=UU${c.slice(2)}`)));rs.forEach((r,k)=>{if(r.status==='fulfilled')up[g[k]]=(r.value.items||[]).map(i=>i.contentDetails&&i.contentDetails.videoId).filter(Boolean)})}
+ const ids=[...new Set(Object.values(up).flat())],st={};
+ const rs=await Promise.allSettled(chunk(ids,50).map(c=>yt('videos',`part=statistics,contentDetails&id=${c.join(',')}`)));
+ rs.forEach(r=>{if(r.status==='fulfilled')(r.value.items||[]).forEach(v=>st[v.id]=[+(v.statistics.viewCount||0),iso(v.contentDetails.duration)])});
+ need.forEach(c=>{const a=(up[c]||[]).map(i=>st[i]).filter(Boolean),lg=a.filter(x=>x[1]>180),use=lg.length>=3?lg:a;let m=use.length>=3?med(use.map(x=>x[0])):null,ax=0;
+  if(m==null){const i=inf.get(c);if(i&&i.n>0){m=i.vc/i.n;ax=1}}
+  C[c]=[m,now,ax]});
+ const keep={};Object.keys(C).sort((a,b)=>C[b][1]-C[a][1]).slice(0,1500).forEach(k=>keep[k]=C[k]);lsw('invMed',keep);return C}
+async function chInfo(ids){const m=new Map();for(const c of chunk([...new Set(ids)],50)){const j=await yt('channels',`part=statistics&id=${c.join(',')}`);(j.items||[]).forEach(x=>m.set(x.id,{s:x.statistics.hiddenSubscriberCount?null:+x.statistics.subscriberCount,vc:+(x.statistics.viewCount||0),n:+(x.statistics.videoCount||0)}))}return m}
+
+const params=()=>({q:$('#ivQ').value.trim(),lg:$('#ivLg').value,d:+$('#ivD').value,o:$('#ivO').value,r:[...regs].sort()});
+const keyOf=p=>[norm(p.q),p.lg,p.d,p.o,p.r.join(',')].join('|');
+const cRead=k=>{const c=lsj('invC',{})[k];return c&&Date.now()-c.t<864e5?c:null};
+const cWrite=()=>{const c=lsj('invC',{});c[ST.key]={t:Date.now(),rows:ST.rows.slice(0,400),tok:ST.tok};let ks=Object.keys(c).sort((a,b)=>c[b].t-c[a].t).slice(0,5);while(ks.length){const n={};ks.forEach(k=>n[k]=c[k]);if(lsw('invC',n))break;ks.pop()}};
+async function page(p){const rl=p.r.length?p.r:[''],open=rl.filter(r=>ST.tok[r]!=='END');if(!open.length)return 0;
+ const after=p.d?'&publishedAfter='+encodeURIComponent(new Date(Date.now()-p.d*864e5).toISOString()):'';
+ const rs=await Promise.allSettled(open.map(r=>yt('search',`part=id&type=video&maxResults=50&order=${p.o}&q=${encodeURIComponent(p.q)}${p.lg?'&relevanceLanguage='+p.lg:''}${r?'&regionCode='+r:''}${after}${ST.tok[r]?'&pageToken='+ST.tok[r]:''}`)));
+ const ok=rs.filter(r=>r.status==='fulfilled');if(!ok.length)throw rs[0].reason;
+ const have=new Set(ST.rows.map(v=>v.i)),ids=[];
+ rs.forEach((r,k)=>{if(r.status!=='fulfilled')return;ST.tok[open[k]]=r.value.nextPageToken||'END';(r.value.items||[]).forEach(i=>{const id=i.id&&i.id.videoId;if(id&&!have.has(id)){have.add(id);ids.push(id)}})});
+ if(!ids.length)return 0;
+ const vs=await vdet(ids),chs=[...new Set(vs.map(v=>v.snippet.channelId))],inf=await chInfo(chs);let M={};
+ try{M=await medians(chs,inf)}catch(e){chs.forEach(c=>{const i=inf.get(c);if(i&&i.n>0)M[c]=[i.vc/i.n,0,1]})}
+ const pos=new Map(ids.map((id,k)=>[id,k])),base=ST.rows.length;
+ vs.sort((a,b)=>pos.get(a.id)-pos.get(b.id)).forEach((v,k)=>{const ch=v.snippet.channelId,i=inf.get(ch)||{},r=mapV(v,v.snippet.channelTitle,i.s==null?null:i.s),m=M[ch];
+  r.es=langOf(r.lg,r.t+' '+r.ds)==='es'?1:0;delete r.ds;delete r.l;delete r.cm;r.rk=base+k;r.x=m&&m[0]>0?r.v/m[0]:null;r.ax=m&&m[2]?1:0;ST.rows.push(r)});
+ return ids.length}
+
+const fl=()=>{const g=i=>pn($('#'+i).value);return{s0:g('ivS0'),s1:g('ivS1'),v0:g('ivV0'),v1:g('ivV1'),x0:g('ivX0'),x1:g('ivX1'),L:$('#ivL').value,lg:$('#ivLg').value,so:$('#ivSo').value}};
+const TESTS=[['idioma',(v,f)=>!f.lg||(f.lg==='es'?v.es:!v.es)],
+ ['duración',(v,f)=>f.L==='all'||(f.L==='ns'?v.d>180:f.L==='c'?v.d>180&&v.d<600:f.L==='m'?v.d>=600&&v.d<=1800:v.d>1800)],
+ ['suscriptores',(v,f)=>(f.s0==null&&f.s1==null)||(v.s!=null&&(f.s0==null||v.s>=f.s0)&&(f.s1==null||v.s<=f.s1))],
+ ['visualizaciones',(v,f)=>(f.v0==null||v.v>=f.v0)&&(f.v1==null||v.v<=f.v1)],
+ ['puntuación atípica',(v,f)=>(f.x0==null&&f.x1==null)||(v.x!=null&&(f.x0==null||v.x>=f.x0)&&(f.x1==null||v.x<=f.x1))]];
+const xl=v=>v.x==null?'':`<span class="ivx ${v.x>=10?'ivhi':v.x<1?'ivlo':''}">${v.ax?'≈':''}${v.x>=10?Math.round(v.x):v.x.toLocaleString('es-ES',{maximumFractionDigits:1})}x</span>`;
+function draw(){save();if(!ST.key){out.innerHTML='';return}
+ const f=fl(),rows=ST.rows.filter(v=>TESTS.every(t=>t[1](v,f)));
+ const by={x:(a,b)=>(b.x??-1)-(a.x??-1),xa:(a,b)=>(a.x??1e9)-(b.x??1e9),v:(a,b)=>b.v-a.v,p:(a,b)=>new Date(b.p)-new Date(a.p),r:(a,b)=>a.rk-b.rk};rows.sort(by[f.so]||by.x);
+ const act=[];const rg=(a,b,l,u)=>{if(a!=null||b!=null)act.push(l+': '+(a!=null&&b!=null?kf(a)+'–'+kf(b):a!=null?'≥ '+kf(a):'≤ '+kf(b))+(u||''))};
+ rg(f.s0,f.s1,'Suscriptores');rg(f.v0,f.v1,'Visualizaciones');rg(f.x0,f.x1,'Atípica','x');
+ if(f.L!=='all')act.push($('#ivL').selectedOptions[0].textContent);if(f.lg)act.push($('#ivLg').selectedOptions[0].textContent);
+ const more=Object.values(ST.tok).some(t=>t!=='END');
+ let h=`<div class="ivhead"><b>${rows.length} resultado${rows.length===1?'':'s'}</b><span class="hint">de ${ST.rows.length} vídeos encontrados</span>${act.map(a=>`<span class="ivf">${esc(a)}</span>`).join('')}</div>`;
+ if(!rows.length&&ST.rows.length){h+=`<div class="iverr">Tus filtros quitan todos los vídeos.\n${TESTS.map(t=>{const n=ST.rows.filter(v=>!t[1](v,f)).length;return n?`· ${t[0]}: quita ${n}`:''}).filter(Boolean).join('\n')}</div>`}
+ if(!ST.rows.length)h+='<div class="iverr">YouTube no ha devuelto vídeos para esta búsqueda. Prueba otras palabras o una fecha más amplia.</div>';
+ h+=`<div class="ivgrid">${rows.map(v=>`<a class="ivcard" href="https://www.youtube.com/watch?v=${ea(v.i)}" target="_blank" rel="noopener"><div class="ivth"><img loading="lazy" alt="" src="${ea(v.th)}"><span>${dur(v.d)}</span></div><div class="ivt">${esc(v.t)}</div><div class="ivm">${esc(v.c)} · ${v.s==null?'subs ocultos':kf(v.s)+' subs'}</div><div class="ivm">${xl(v)}${kf(v.v)} vistas · ${age(v.p)}</div></a>`).join('')}</div>`;
+ if(more)h+=`<div class="bar"><button class="btn s" id="ivMore">Cargar más (≈ ${cost()} unidades)</button></div>`;
+ if(rows.some(v=>v.ax))h+='<p class="hint" style="margin-top:12px">≈ = puntuación aproximada (no se pudieron leer los últimos vídeos de ese canal).</p>';
+ out.innerHTML=h;const b=$('#ivMore');if(b)b.onclick=()=>go2(true)}
+const fail=e=>{const m=String(e&&e.message||e);out.insertAdjacentHTML('afterbegin',`<div class="iverr">${esc(/quota/i.test(m)?'Se ha agotado la cuota diaria de YouTube (10.000 unidades). Se renueva sobre las 9:00 de la mañana, hora de España. Las búsquedas guardadas de hoy siguen funcionando.':/Falta la clave/.test(m)?m:'YouTube ha dado un error: '+m)}</div>`)};
+async function related(q,lg){const el=$('#ivRel'),k=norm(q)+'|'+lg,C=lsj('invRel',{});let a=C[k];
+ if(!a){try{const d=await jsonp(`https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&hl=${lg||'es'}&q=${encodeURIComponent(q)}`);a=((d&&d[1])||[]).map(x=>Array.isArray(x)?x[0]:x).filter(x=>typeof x==='string'&&norm(x)!==norm(q)).slice(0,10)}catch(e){a=[]}
+  if(a.length<3&&val('k_gem')){try{const d=await aiJ(`Dame 8 búsquedas de YouTube relacionadas con «${q}»${lg==='en'?' en inglés':' en español'}: variantes y temas vecinos que buscaría el mismo público. Frases cortas de 2 a 5 palabras. Responde SOLO con JSON válido: {"temas":[""]}`);a=(d.temas||[]).filter(x=>typeof x==='string').slice(0,8)}catch(e){}}
+  if(a.length){C[k]=a;const ks=Object.keys(C).slice(-40),n={};ks.forEach(x=>n[x]=C[x]);lsw('invRel',n)}}
+ if(norm($('#ivQ').value)!==norm(q))return;
+ el.innerHTML=(a||[]).map(t=>`<button class="ivc">${esc(t)}</button>`).join('');[...el.children].forEach((b,i)=>b.onclick=()=>{$('#ivQ').value=a[i];go2(false)})}
+async function go2(more){const p=params();if(!p.q){out.innerHTML='<div class="iverr">Escribe un tema para buscar.</div>';return}
+ const k=keyOf(p);msg('');$('#ivGo').disabled=true;busy('#ldInv',1);let note='';
+ try{if(!more||k!==ST.key){const c=cRead(k);if(c){ST={key:k,rows:c.rows,tok:c.tok||{},cached:true};note='Búsqueda guardada: no ha gastado cuota.';more=false}else{ST={key:k,rows:[],tok:{},cached:false};$('#ivRel').innerHTML='';more=true}}
+  if(more){await page(p);cWrite()}
+  draw();related(p.q,p.lg)}catch(e){draw();fail(e)}
+ busy('#ldInv',0);$('#ivGo').disabled=false;info(note)}
+$('#ivGo').onclick=()=>go2(false);$('#ivQ').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#ivQ').blur();go2(false)}});
+NUM.concat(['ivL','ivSo']).forEach(i=>$('#'+i).addEventListener('input',draw));
+['ivD','ivO','ivLg'].forEach(i=>$('#'+i).addEventListener('change',()=>{save();if(ST.key&&keyOf(params())===ST.key)draw();else info('Pulsa «Buscar» para aplicar este cambio.')}));
+$('#ivClr').onclick=()=>{NUM.forEach(i=>$('#'+i).value='');SEL.forEach(i=>$('#'+i).value=DEF[i]);regs.clear();paintReg();draw();toast('Filtros limpios ✓')};
+})();
 
 </script><script src="https://accounts.google.com/gsi/client" async defer></script><script>(()=>{const N={inicio:'Inicio',mic:'Optimizar',tend:'Investigación',meta:'Crear',torneo:'Torneo',feed:'Vista en el feed',idd:'Ideas diarias',ideas:'Generar ideas',guion:'Guion',crecer:'Crecer',ajustes:'Ajustes'};const up=()=>{const s=document.querySelector('main>section.on');if(!s)return;const c=document.getElementById('crumbT');if(c)c.textContent=N[s.id]||s.id;document.querySelectorAll('#drw .di[data-dg]').forEach(b=>b.classList.toggle('on',b.dataset.dg===s.id))};const o=new MutationObserver(up);document.querySelectorAll('main>section').forEach(x=>o.observe(x,{attributes:true,attributeFilter:['class']}));up()})();</script></body></html>
